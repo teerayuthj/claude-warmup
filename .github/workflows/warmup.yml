@@ -2,7 +2,9 @@ name: Claude Code Warmup
 
 on:
   schedule:
-    - cron: '35 21 * * 0-4'
+    # GitHub scheduled runs can be delayed, so trigger a bit earlier than the
+    # desired 05:50 ICT warmup time.
+    - cron: '15 5 * * 1-5'
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
