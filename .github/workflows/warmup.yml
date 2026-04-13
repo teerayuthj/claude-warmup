@@ -2,9 +2,8 @@ name: Claude Code Warmup
 
 on:
   schedule:
-    # GitHub Actions delays average 45-68 min; trigger at 03:45 ICT
-    # so the job finishes before 05:00 ICT even with worst-case delay.
-    - cron: '45 3 * * *'
+    # Best-effort trigger inside the 05:00-06:00 ICT target window.
+    - cron: '7 5 * * *'
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
