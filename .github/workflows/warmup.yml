@@ -2,8 +2,8 @@ name: Claude Code Warmup
 
 on:
   schedule:
-    # Best-effort trigger inside the 05:00-06:00 ICT target window.
-    - cron: '7 5 * * *'
+    # Best-effort trigger shifted 15 minutes earlier to add more buffer before 06:00 ICT.
+    - cron: '52 4 * * *'
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
