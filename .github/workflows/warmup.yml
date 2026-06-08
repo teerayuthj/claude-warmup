@@ -7,6 +7,10 @@ on:
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
+permissions:
+  actions: write
+  contents: write
+
 jobs:
   warmup:
     runs-on: ubuntu-latest
@@ -23,3 +27,9 @@ jobs:
           echo '{"hasCompletedOnboarding":true}' > ~/.claude.json
           claude -p "hi" --model haiku --no-session-persistence 2>&1 || true
           echo "✓ Warmup complete"
+
+      # Prevent GitHub from disabling this scheduled workflow after 60 days of
+      # repository inactivity. This creates a dummy commit only when the repo is
+      # close to the inactivity limit, keeping the schedule alive automatically.
+      - name: Keep workflow alive
+        uses: gautamkrishnar/keepalive-workflow@v2
