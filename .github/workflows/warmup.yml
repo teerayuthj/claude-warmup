@@ -29,7 +29,25 @@ jobs:
           echo "✓ Warmup complete"
 
       # Prevent GitHub from disabling this scheduled workflow after 60 days of
-      # repository inactivity. This creates a dummy commit only when the repo is
-      # close to the inactivity limit, keeping the schedule alive automatically.
+      # repository inactivity. Pushes an empty commit only when the repo has
+      # been inactive for ~50+ days, keeping the schedule alive automatically.
+      # Implemented inline (no external action) to comply with the repo's
+      # Actions policy, which blocks third-party actions.
       - name: Keep workflow alive
-        uses: gautamkrishnar/keepalive-workflow@v2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          last=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_REF_NAME}" --jq '.commit.committer.date')
+          age=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 86400 ))
+          echo "Days since last commit: $age"
+          if [ "$age" -ge 50 ]; then
+            echo "Repo inactive ${age}d — pushing keepalive commit."
+            git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+            cd repo
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "chore: keepalive to prevent workflow auto-disable"
+            git push
+          else
+            echo "Repo active recently — no keepalive commit needed."
+          fi
