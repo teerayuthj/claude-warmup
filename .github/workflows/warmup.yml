@@ -2,8 +2,12 @@ name: Claude Code Warmup
 
 on:
   schedule:
-    # Best-effort trigger shifted 15 minutes earlier to add more buffer before 06:00 ICT.
-    - cron: '52 4 * * *'
+    # GitHub Actions schedule triggers are best-effort and have been drifting
+    # later each day (observed landing times crept from ~06:30 to ~09:00 ICT).
+    # A single cron time can't reliably hit a 05:00-06:00 ICT window, so we
+    # fire every 15 minutes across 00:00-06:45 ICT and gate the real work
+    # below to only run once the actual clock is within 05:00-06:00 ICT.
+    - cron: '*/15 0-6 * * *'
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
@@ -16,16 +20,29 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      - name: Check if within target window (05:00-06:00 ICT)
+        id: window
+        run: |
+          hour=$(TZ='Asia/Bangkok' date +%H)
+          echo "Current ICT hour: $hour"
+          if [ "$hour" = "05" ]; then
+            echo "in_window=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "in_window=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Claude Code
+        if: steps.window.outputs.in_window == 'true' || github.event_name == 'workflow_dispatch'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Ping Claude to anchor 5-hour window
+        if: steps.window.outputs.in_window == 'true' || github.event_name == 'workflow_dispatch'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
         run: |
           mkdir -p ~/.claude
           echo '{"hasCompletedOnboarding":true}' > ~/.claude.json
-          claude -p "hi" --model haiku --no-session-persistence 2>&1 || true
+          claude -p "hi" --model sonnet --no-session-persistence 2>&1 || true
           echo "✓ Warmup complete"
 
       # Prevent GitHub from disabling this scheduled workflow after 60 days of
