@@ -2,12 +2,23 @@ name: Claude Code Warmup
 
 on:
   schedule:
-    # GitHub Actions schedule triggers are best-effort and have been drifting
-    # later each day (observed landing times crept from ~06:30 to ~09:00 ICT).
-    # A single cron time can't reliably hit a 05:00-06:00 ICT window, so we
-    # fire every 15 minutes across 00:00-06:45 ICT and gate the real work
-    # below to only run once the actual clock is within 05:00-06:00 ICT.
-    - cron: '*/15 0-6 * * *'
+    # GitHub Actions scheduled triggers are best-effort and, for a
+    # low-activity repo, GitHub silently drops most ticks of a dense cron
+    # (e.g. "*/15 0-6 * * *" only ever fired once across 2 days instead of
+    # ~28 times/day) and also drifts the delivery time later day over day.
+    # Spreading a handful of separate schedule entries across the morning,
+    # with no post-hoc skip logic, maximizes the odds that at least one
+    # actually lands close to 05:00-06:00 ICT while guaranteeing that
+    # whichever one does fire always performs the real ping.
+    - cron: '30 3 * * *'
+      timezone: 'Asia/Bangkok'
+    - cron: '0 4 * * *'
+      timezone: 'Asia/Bangkok'
+    - cron: '30 4 * * *'
+      timezone: 'Asia/Bangkok'
+    - cron: '0 5 * * *'
+      timezone: 'Asia/Bangkok'
+    - cron: '30 5 * * *'
       timezone: 'Asia/Bangkok'
   workflow_dispatch: {}
 
@@ -20,23 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Check if within target window (05:00-06:00 ICT)
-        id: window
-        run: |
-          hour=$(TZ='Asia/Bangkok' date +%H)
-          echo "Current ICT hour: $hour"
-          if [ "$hour" = "05" ]; then
-            echo "in_window=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "in_window=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install Claude Code
-        if: steps.window.outputs.in_window == 'true' || github.event_name == 'workflow_dispatch'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Ping Claude to anchor 5-hour window
-        if: steps.window.outputs.in_window == 'true' || github.event_name == 'workflow_dispatch'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
         run: |
